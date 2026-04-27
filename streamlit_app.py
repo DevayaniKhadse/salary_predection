@@ -2,74 +2,140 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load the trained model, scaler, and label encoders
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(
+    page_title="Salary Prediction Dashboard",
+    page_icon="💼",
+    layout="wide"
+)
+
+# -------------------- CUSTOM CSS --------------------
+st.markdown("""
+    <style>
+        .main {
+            background-color: #f5f7fb;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+        }
+        .metric-card {
+            padding: 25px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #6C63FF, #8E7CFF);
+            color: white;
+            text-align: center;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .subtitle {
+            color: gray;
+            font-size: 14px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# -------------------- LOAD MODEL --------------------
 model = joblib.load('best_model.pkl')
 scaler = joblib.load('scaler.pkl')
 label_encoders = joblib.load('label_encoders.pkl')
 
+# -------------------- FUNCTION (UNCHANGED) --------------------
 def predict_salary(input_data):
-    # Create a DataFrame from input data
     df_input = pd.DataFrame([input_data])
 
-    # Apply label encoding using the loaded encoders
     for column, encoder in label_encoders.items():
         if column in df_input.columns:
-            # Get known classes from the encoder
             known_classes = encoder.classes_
-            # Map input values to their encoded integers
-            # If an input value is not in known_classes, replace it with -1 (or handle as appropriate)
-            df_input[column] = df_input[column].apply(lambda x: encoder.transform([x])[0] if x in known_classes else -1)
+            df_input[column] = df_input[column].apply(
+                lambda x: encoder.transform([x])[0] if x in known_classes else -1
+            )
 
-    # Define the order of columns as expected by the model (excluding 'Salary')
-    # These are the columns from the X DataFrame used for training
     expected_columns = ['Age', 'Gender', 'Education Level', 'Job Title', 'Years of Experience']
 
-    # Ensure all expected columns are present, adding any missing with a default value
     for col in expected_columns:
         if col not in df_input.columns:
-            df_input[col] = 0.0 # Default value, ideally derived from training data stats or mean
+            df_input[col] = 0.0
 
-    # Reorder columns to match training data order
     df_input = df_input[expected_columns]
 
-    # Scale numerical features using the loaded scaler
     scaled_input = scaler.transform(df_input)
 
-    # Make prediction
     prediction = model.predict(scaled_input)
     return prediction[0]
 
-st.title('Salary Prediction App')
+# -------------------- SIDEBAR --------------------
+with st.sidebar:
+    st.title("💼 Salary AI")
+    st.markdown("### Navigation")
+    st.markdown("- Dashboard\n- Prediction\n- Insights")
+    st.markdown("---")
+    st.caption("Built for deployment")
 
-st.write('Enter the details below to predict the salary.')
+# -------------------- HEADER --------------------
+st.markdown('<div class="title">Salary Prediction Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">AI-powered salary estimation system</div>', unsafe_allow_html=True)
 
-# Input fields for features, matching the original training data
-age = st.slider('Age', 18.0, 65.0, 30.0, 0.5)
+st.markdown("")
 
-# For categorical columns, retrieve the original classes from the label encoders
-gender_options = list(label_encoders['Gender'].classes_)
-gender = st.selectbox('Gender', gender_options)
+# -------------------- INPUT SECTION --------------------
+col1, col2 = st.columns([2, 1])
 
-education_options = list(label_encoders['Education Level'].classes_)
-education_level = st.selectbox('Education Level', education_options)
+with col1:
+    with st.container():
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("📊 Enter Candidate Details")
 
-job_title_options = list(label_encoders['Job Title'].classes_)
-job_title = st.selectbox('Job Title', job_title_options)
+        c1, c2 = st.columns(2)
 
-years_experience = st.slider('Years of Experience', 0.0, 40.0, 5.0, 0.5)
+        with c1:
+            age = st.slider('Age', 18.0, 65.0, 30.0, 0.5)
 
+            gender_options = list(label_encoders['Gender'].classes_)
+            gender = st.selectbox('Gender', gender_options)
 
-if st.button('Predict Salary'):
-    input_data = {
-        'Age': age,
-        'Gender': gender,
-        'Education Level': education_level,
-        'Job Title': job_title,
-        'Years of Experience': years_experience
-    }
+            education_options = list(label_encoders['Education Level'].classes_)
+            education_level = st.selectbox('Education Level', education_options)
 
-    try:
-        predicted_salary = predict_salary(input_data)
-        st.success(f'The predicted salary is: ₹{predicted_salary:,.2f}')
-    except Exception as e:
-        st.error(f"An error occurred during prediction: {e}")
+        with c2:
+            job_title_options = list(label_encoders['Job Title'].classes_)
+            job_title = st.selectbox('Job Title', job_title_options)
+
+            years_experience = st.slider('Years of Experience', 0.0, 40.0, 5.0, 0.5)
+
+        predict_btn = st.button("🚀 Predict Salary")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# -------------------- OUTPUT SECTION --------------------
+with col2:
+    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+    st.subheader("💰 Predicted Salary")
+
+    if predict_btn:
+        input_data = {
+            'Age': age,
+            'Gender': gender,
+            'Education Level': education_level,
+            'Job Title': job_title,
+            'Years of Experience': years_experience
+        }
+
+        try:
+            predicted_salary = predict_salary(input_data)
+            st.markdown(f"<h2>₹{predicted_salary:,.2f}</h2>", unsafe_allow_html=True)
+            st.success("Prediction Successful")
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.markdown("<h3>--</h3>", unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# -------------------- FOOTER --------------------
+st.markdown("---")
+st.caption("© 2026 Salary Prediction System | Ready for deployment")
