@@ -3,40 +3,62 @@ import pandas as pd
 import joblib
 
 # -------------------- PAGE CONFIG --------------------
-st.set_page_config(
-    page_title="Salary Prediction Dashboard",
-    page_icon="💼",
-    layout="wide"
-)
+st.set_page_config(page_title="Salary Predictor", layout="wide")
 
 # -------------------- CUSTOM CSS --------------------
 st.markdown("""
-    <style>
-        .main {
-            background-color: #f5f7fb;
-        }
-        .card {
-            padding: 20px;
-            border-radius: 12px;
-            background: white;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
-        }
-        .metric-card {
-            padding: 25px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #6C63FF, #8E7CFF);
-            color: white;
-            text-align: center;
-        }
-        .title {
-            font-size: 28px;
-            font-weight: 600;
-        }
-        .subtitle {
-            color: gray;
-            font-size: 14px;
-        }
-    </style>
+<style>
+body {
+    background: #f4f5fb;
+}
+.main {
+    background: #f4f5fb;
+}
+
+/* Gradient Header */
+.header {
+    background: linear-gradient(135deg, #5f2eea, #7b61ff);
+    padding: 30px;
+    border-radius: 20px;
+    color: white;
+    text-align: center;
+}
+
+/* Card */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+/* Button */
+.stButton>button {
+    background: linear-gradient(135deg, #5f2eea, #7b61ff);
+    color: white;
+    border-radius: 10px;
+    padding: 10px 20px;
+    border: none;
+}
+
+/* Skill tags */
+.skill {
+    display:inline-block;
+    background:#eee;
+    padding:6px 12px;
+    border-radius:20px;
+    margin:5px;
+}
+
+/* Salary Card */
+.salary-box {
+    background: linear-gradient(135deg, #5f2eea, #7b61ff);
+    color: white;
+    padding: 25px;
+    border-radius: 20px;
+    text-align: center;
+}
+</style>
 """, unsafe_allow_html=True)
 
 # -------------------- LOAD MODEL --------------------
@@ -44,7 +66,7 @@ model = joblib.load('best_model.pkl')
 scaler = joblib.load('scaler.pkl')
 label_encoders = joblib.load('label_encoders.pkl')
 
-# -------------------- FUNCTION (UNCHANGED) --------------------
+# -------------------- FUNCTION --------------------
 def predict_salary(input_data):
     df_input = pd.DataFrame([input_data])
 
@@ -62,80 +84,89 @@ def predict_salary(input_data):
             df_input[col] = 0.0
 
     df_input = df_input[expected_columns]
-
     scaled_input = scaler.transform(df_input)
-
     prediction = model.predict(scaled_input)
+
     return prediction[0]
 
-# -------------------- SIDEBAR --------------------
-with st.sidebar:
-    st.title("💼 Salary AI")
-    st.markdown("### Navigation")
-    st.markdown("- Dashboard\n- Prediction\n- Insights")
-    st.markdown("---")
-    st.caption("Built for deployment")
-
 # -------------------- HEADER --------------------
-st.markdown('<div class="title">Salary Prediction Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">AI-powered salary estimation system</div>', unsafe_allow_html=True)
+st.markdown("""
+<div class="header">
+    <h1>💼 Salary Prediction</h1>
+    <p>Get AI-powered salary insights</p>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown("")
+st.write("")
 
-# -------------------- INPUT SECTION --------------------
+# -------------------- MAIN LAYOUT --------------------
 col1, col2 = st.columns([2, 1])
 
+# -------------------- INPUT FORM --------------------
 with col1:
-    with st.container():
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.subheader("📊 Enter Candidate Details")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        c1, c2 = st.columns(2)
+    st.subheader("Fill your details")
 
-        with c1:
-            age = st.slider('Age', 18.0, 65.0, 30.0, 0.5)
+    age = st.slider('Age', 18.0, 65.0, 25.0)
+    gender = st.selectbox('Gender', list(label_encoders['Gender'].classes_))
+    education = st.selectbox('Education', list(label_encoders['Education Level'].classes_))
+    job = st.selectbox('Job Role', list(label_encoders['Job Title'].classes_))
+    exp = st.slider('Experience (Years)', 0.0, 40.0, 3.0)
 
-            gender_options = list(label_encoders['Gender'].classes_)
-            gender = st.selectbox('Gender', gender_options)
+    # Skills UI (NEW FEATURE)
+    st.markdown("### Skills")
+    skills = ["Python", "SQL", "Machine Learning", "Deep Learning", "Data Analysis"]
+    selected_skills = st.multiselect("", skills)
 
-            education_options = list(label_encoders['Education Level'].classes_)
-            education_level = st.selectbox('Education Level', education_options)
+    predict_btn = st.button("Predict Salary")
 
-        with c2:
-            job_title_options = list(label_encoders['Job Title'].classes_)
-            job_title = st.selectbox('Job Title', job_title_options)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-            years_experience = st.slider('Years of Experience', 0.0, 40.0, 5.0, 0.5)
-
-        predict_btn = st.button("🚀 Predict Salary")
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# -------------------- OUTPUT SECTION --------------------
+# -------------------- OUTPUT --------------------
 with col2:
-    st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-    st.subheader("💰 Predicted Salary")
-
     if predict_btn:
         input_data = {
             'Age': age,
             'Gender': gender,
-            'Education Level': education_level,
-            'Job Title': job_title,
-            'Years of Experience': years_experience
+            'Education Level': education,
+            'Job Title': job,
+            'Years of Experience': exp
         }
 
-        try:
-            predicted_salary = predict_salary(input_data)
-            st.markdown(f"<h2>₹{predicted_salary:,.2f}</h2>", unsafe_allow_html=True)
-            st.success("Prediction Successful")
-        except Exception as e:
-            st.error(f"Error: {e}")
-    else:
-        st.markdown("<h3>--</h3>", unsafe_allow_html=True)
+        salary = predict_salary(input_data)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="salary-box">
+            <h3>Estimated Salary</h3>
+            <h1>₹{salary:,.0f}</h1>
+            <p>💹 Based on your profile</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-# -------------------- FOOTER --------------------
-st.markdown("---")
-st.caption("© 2026 Salary Prediction System | Ready for deployment")
+        # -------------------- INSIGHTS (NEW FEATURE) --------------------
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Insights")
+
+        if exp > 5:
+            st.success("Experience is boosting your salary 📈")
+
+        if "Machine Learning" in selected_skills:
+            st.info("ML skill increases earning potential 🚀")
+
+        if education.lower().startswith("master"):
+            st.warning("Higher education gives advantage 🎓")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # -------------------- SALARY RANGE (NEW FEATURE) --------------------
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("Salary Range")
+
+        low = salary * 0.8
+        high = salary * 1.2
+
+        st.write(f"₹{low:,.0f}  —  ₹{high:,.0f}")
+        st.progress(70)
+
+        st.markdown('</div>', unsafe_allow_html=True)
